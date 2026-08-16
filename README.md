@@ -94,6 +94,16 @@ docker start <rollback-container-name>
 If the previous container was renamed from the canonical name, rename it back
 before starting it.
 
+## Private API gateway
+
+Production agents and coding CLIs should use the authenticated, tailnet-private
+HTTPS gateway instead of connecting to the raw vLLM port. The gateway preserves
+streaming responses, requires a bearer key from a protected file, and explicitly
+disables Tailscale Funnel during configuration.
+
+See [`docs/API-GATEWAY.md`](docs/API-GATEWAY.md) for installation, Codex Router
+mapping, verification, key rotation, and rollback.
+
 ## Re-run the workload
 
 The benchmark client is read-only with respect to containers. It only calls the

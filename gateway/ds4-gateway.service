@@ -1,0 +1,25 @@
+[Unit]
+Description=Authenticated DS4 vLLM API gateway
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=PYTHONUNBUFFERED=1
+Environment=DS4_GATEWAY_LISTEN_HOST=127.0.0.1
+Environment=DS4_GATEWAY_PORT=4000
+Environment=DS4_GATEWAY_UPSTREAM=http://127.0.0.1:30000
+Environment=DS4_GATEWAY_API_KEY_FILE=%h/.config/ds4-gateway/api-key
+EnvironmentFile=-%h/.config/ds4-gateway/gateway.env
+ExecStart=/usr/bin/python3 %h/.local/share/ds4-gateway/gateway.py
+Restart=always
+RestartSec=2
+TimeoutStopSec=20
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=default.target
