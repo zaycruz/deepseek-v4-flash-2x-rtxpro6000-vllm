@@ -71,6 +71,21 @@ CONTAINER_NAME=deepseek-v4-flash-vllm-prod \
 ./scripts/start.sh
 ```
 
+Context and scheduler limits are explicit deployment inputs. The benchmarked
+baseline remains 12,288 tokens, while a 128K candidate can be launched with:
+
+```bash
+MAX_MODEL_LEN=131072 \
+MAX_NUM_SEQS=24 \
+MAX_NUM_BATCHED_TOKENS=16384 \
+GPU_MEMORY_UTILIZATION=0.98 \
+./scripts/start.sh
+```
+
+Advertising 128K verifies that one request may address that context window; it
+does not imply that 24 requests can simultaneously fill 128K. Measure realistic
+prompt occupancy, queueing, and per-stream throughput separately.
+
 The launch script also mounts persistent vLLM, TileLang, DeepGEMM, FlashInfer,
 and Triton caches to avoid repeating kernel compilation after every container
 replacement.

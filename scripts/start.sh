@@ -11,6 +11,10 @@ MODEL_REVISION=${MODEL_REVISION:-7872f01b1d1fe23eabc4c98b48bffcef5a386062}
 MODEL_PATH="/root/.cache/huggingface/hub/models--deepseek-ai--DeepSeek-V4-Flash-0731/snapshots/${MODEL_REVISION}"
 PATCH_FILE=${PATCH_FILE:-${REPO_ROOT}/patches/sparse_swa_sm120.py}
 READY_TIMEOUT_SECONDS=${READY_TIMEOUT_SECONDS:-1800}
+MAX_MODEL_LEN=${MAX_MODEL_LEN:-12288}
+MAX_NUM_SEQS=${MAX_NUM_SEQS:-24}
+MAX_NUM_BATCHED_TOKENS=${MAX_NUM_BATCHED_TOKENS:-16384}
+GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION:-0.95}
 
 if [[ ! -f "${PATCH_FILE}" ]]; then
   echo "missing compatibility patch: ${PATCH_FILE}" >&2
@@ -62,10 +66,10 @@ docker run -d \
   --trust-remote-code \
   --served-model-name deepseek-v4-flash-0731 \
   --tensor-parallel-size 2 \
-  --gpu-memory-utilization 0.95 \
-  --max-model-len 12288 \
-  --max-num-seqs 24 \
-  --max-num-batched-tokens 16384 \
+  --gpu-memory-utilization "${GPU_MEMORY_UTILIZATION}" \
+  --max-model-len "${MAX_MODEL_LEN}" \
+  --max-num-seqs "${MAX_NUM_SEQS}" \
+  --max-num-batched-tokens "${MAX_NUM_BATCHED_TOKENS}" \
   --kv-cache-dtype fp8 \
   --kernel-config '{"moe_backend":"marlin","enable_flashinfer_autotune":false}' \
   --tokenizer-mode deepseek_v4 \
@@ -89,6 +93,11 @@ while (( SECONDS < deadline )); do
   if [[ $(docker inspect -f '{{.State.Running}}' "${CONTAINER_NAME}" 2>/dev/null || true) != true ]]; then
     docker logs --tail 160 "${CONTAINER_NAME}" >&2 || true
     echo "${CONTAINER_NAME} exited during startup" >&2
+    exit 4
+  fi
+  if (( $(docker inspect -f '{{.RestartCount}}' "${CONTAINER_NAME}") > 0 )); then
+    docker logs --tail 160 "${CONTAINER_NAME}" >&2 || true
+    echo "${CONTAINER_NAME} restarted during startup" >&2
     exit 4
   fi
   sleep 5
