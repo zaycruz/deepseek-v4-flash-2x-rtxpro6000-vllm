@@ -18,8 +18,10 @@ generation.
 
 ## Install
 
-Provision the same random key to the host and authorized clients through a
-secret manager. Never paste it into chat, shell history, Git, or an issue.
+Each person or automation identity receives an independently revocable key.
+The gateway stores only SHA-256 digests in a mode-600 registry; a newly issued
+secret is displayed once. Never paste keys into chat, shell history, Git, or an
+issue.
 
 ```bash
 install -d -m 700 ~/.config/ds4-gateway
@@ -36,9 +38,30 @@ key itself in an argument:
 PROVISION_KEY_FILE=/secure/input/api-key ./scripts/install-gateway.sh
 ```
 
-The scripts preserve the prior Tailscale status under
+On upgrade, the installer migrates the existing single key to the `owner`
+identity, preserving existing clients. The scripts preserve prior Tailscale status under
 `~/.local/state/ds4-gateway/`. The fail-closed rollback removes the private
 route instead of restoring a previously public Funnel.
+
+## Team key management
+
+Run these commands on the TRX50 host. Member names may contain letters,
+numbers, dot, dash, and underscore.
+
+```bash
+# Display a new secret once. Put it directly into your secret manager.
+bash scripts/manage-gateway-keys.sh add alice
+
+# List member, non-secret key ID, and creation time.
+bash scripts/manage-gateway-keys.sh list
+
+# Revoke immediately by member name or key ID; no service restart is needed.
+bash scripts/manage-gateway-keys.sh revoke alice
+```
+
+Use separate identities for scheduled jobs, for example `ops-nightly` and
+`coding-swarm`, rather than sharing a human key. Existing in-flight streams are
+not interrupted by a revocation, but the key cannot start another request.
 
 ## OpenAI-compatible clients
 
@@ -50,6 +73,17 @@ base URL: https://<tailnet-hostname>/v1
 model: deepseek-v4-flash-0731
 API key: read from the client's secret store
 ```
+
+Generic OpenAI-compatible clients can use:
+
+```bash
+export OPENAI_BASE_URL=https://<tailnet-hostname>/v1
+export OPENAI_API_KEY="$(security find-generic-password -w -s ds4-gateway)"
+```
+
+On Linux, inject `OPENAI_API_KEY` from the team's secret manager instead of a
+shell profile. Configure coding agents with the same base URL, key, and exact
+model ID. Do not point clients at raw port 30000.
 
 For Codex Router, keep the stable user-facing slug if desired, but map its
 `upstreamModel` to `deepseek-v4-flash-0731` and advertise a 12,288-token context
@@ -71,7 +105,11 @@ agent compatibility.
 
 ## Rotation and rollback
 
-Replace the protected key on the host and every authorized client, then run:
+Issue a replacement key under a temporary member name, update that client's
+secret store, verify a real generation, and revoke the old member. Registry
+changes are read on every request, so no gateway restart is required.
+
+To restart the service after a binary or configuration update:
 
 ```bash
 systemctl --user restart ds4-gateway.service

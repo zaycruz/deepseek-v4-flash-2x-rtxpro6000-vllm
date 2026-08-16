@@ -3,12 +3,11 @@
 
 from __future__ import annotations
 
-import hmac
 import http.client
 import json
 import os
+import re
 import signal
-import stat
 import sys
 import threading
 import time
@@ -17,6 +16,11 @@ from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlsplit
+
+try:
+    from gateway.keys import KeyRegistry
+except ModuleNotFoundError:  # Installed gateway.py and keys.py live side by side.
+    from keys import KeyRegistry
 
 
 HOP_BY_HOP_HEADERS = {
@@ -29,6 +33,7 @@ HOP_BY_HOP_HEADERS = {
     "transfer-encoding",
     "upgrade",
 }
+REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,128}$")
 
 
 @dataclass(frozen=True)
@@ -36,26 +41,16 @@ class GatewayConfig:
     listen_host: str
     listen_port: int
     upstream_url: str
-    api_key: str
+    key_registry: KeyRegistry
     max_body_bytes: int = 32 * 1024 * 1024
     upstream_timeout_seconds: int = 900
 
 
-def load_api_key(path: Path) -> str:
-    mode = stat.S_IMODE(path.stat().st_mode)
-    if mode & 0o077:
-        raise ValueError(f"API key file must not be group/world accessible: {path}")
-    key = path.read_text(encoding="utf-8").strip()
-    if len(key) < 16:
-        raise ValueError("API key must be at least 16 characters")
-    return key
-
-
 def config_from_environment() -> GatewayConfig:
-    key_path = Path(
+    registry_path = Path(
         os.environ.get(
-            "DS4_GATEWAY_API_KEY_FILE",
-            "~/.config/ds4-gateway/api-key",
+            "DS4_GATEWAY_API_KEYS_FILE",
+            "~/.config/ds4-gateway/keys.json",
         )
     ).expanduser()
     return GatewayConfig(
@@ -64,7 +59,7 @@ def config_from_environment() -> GatewayConfig:
         upstream_url=os.environ.get(
             "DS4_GATEWAY_UPSTREAM", "http://127.0.0.1:30000"
         ).rstrip("/"),
-        api_key=load_api_key(key_path),
+        key_registry=KeyRegistry(registry_path),
         max_body_bytes=int(
             os.environ.get("DS4_GATEWAY_MAX_BODY_BYTES", str(32 * 1024 * 1024))
         ),
@@ -112,7 +107,13 @@ class GatewayHandler(BaseHTTPRequestHandler):
     def _handle_request(self) -> None:
         started = time.monotonic()
         status = 500
-        request_id = self.headers.get("X-Request-ID") or uuid.uuid4().hex
+        principal = "-"
+        supplied_request_id = self.headers.get("X-Request-ID", "")
+        request_id = (
+            supplied_request_id
+            if REQUEST_ID_PATTERN.fullmatch(supplied_request_id)
+            else uuid.uuid4().hex
+        )
         try:
             path = urlsplit(self.path).path
             if path == "/healthz":
@@ -131,7 +132,26 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 status = 404
                 self._send_json(status, {"error": "not_found"}, request_id)
                 return
-            if not self._authenticated():
+            try:
+                principal = (
+                    self.gateway.config.key_registry.authenticate(
+                        self.headers.get("Authorization", "")
+                    )
+                    or "-"
+                )
+            except (OSError, ValueError, json.JSONDecodeError) as error:
+                print(
+                    f"credential_store_error request_id={request_id} "
+                    f"type={type(error).__name__}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                status = 503
+                self._send_json(
+                    status, {"error": "credential_store_unavailable"}, request_id
+                )
+                return
+            if principal == "-":
                 status = 401
                 self._send_json(
                     status,
@@ -140,7 +160,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
                     {"WWW-Authenticate": "Bearer"},
                 )
                 return
-            status = self._proxy(request_id)
+            status = self._proxy(request_id, principal)
         except BodyTooLarge:
             status = 413
             self._send_json(status, {"error": "request_too_large"}, request_id)
@@ -160,14 +180,10 @@ class GatewayHandler(BaseHTTPRequestHandler):
             path = urlsplit(self.path).path
             print(
                 f"request request_id={request_id} method={self.command} "
-                f"path={path} status={status} duration_ms={elapsed_ms}",
+                f"path={path} principal={principal} status={status} "
+                f"duration_ms={elapsed_ms}",
                 flush=True,
             )
-
-    def _authenticated(self) -> bool:
-        supplied = self.headers.get("Authorization", "")
-        expected = f"Bearer {self.gateway.config.api_key}"
-        return hmac.compare_digest(supplied, expected)
 
     def _ready_status(self) -> int:
         upstream = urlsplit(self.gateway.config.upstream_url)
@@ -186,7 +202,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
         finally:
             connection.close()
 
-    def _proxy(self, request_id: str) -> int:
+    def _proxy(self, request_id: str, principal: str) -> int:
         body = self._read_body()
         upstream = urlsplit(self.gateway.config.upstream_url)
         upstream_path = f"{upstream.path.rstrip('/')}{self.path}"
@@ -194,10 +210,17 @@ class GatewayHandler(BaseHTTPRequestHandler):
             key: value
             for key, value in self.headers.items()
             if key.lower() not in HOP_BY_HOP_HEADERS
-            and key.lower() not in {"authorization", "host", "content-length"}
+            and key.lower()
+            not in {
+                "authorization",
+                "host",
+                "content-length",
+                "x-ds4-principal",
+            }
         }
         headers["Host"] = upstream.netloc
         headers["X-Request-ID"] = request_id
+        headers["X-DS4-Principal"] = principal
         headers["X-Forwarded-Proto"] = "https"
         if body:
             headers["Content-Length"] = str(len(body))

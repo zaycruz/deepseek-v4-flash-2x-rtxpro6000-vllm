@@ -98,8 +98,8 @@ before starting it.
 
 Production agents and coding CLIs should use the authenticated, tailnet-private
 HTTPS gateway instead of connecting to the raw vLLM port. The gateway preserves
-streaming responses, requires a bearer key from a protected file, and explicitly
-disables Tailscale Funnel during configuration.
+streaming responses, supports independently revocable per-member bearer keys,
+and explicitly disables Tailscale Funnel during configuration.
 
 See [`docs/API-GATEWAY.md`](docs/API-GATEWAY.md) for installation, Codex Router
 mapping, verification, key rotation, and rollback.
