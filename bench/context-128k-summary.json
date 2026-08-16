@@ -1,0 +1,76 @@
+{
+  "measured_at": "2026-08-16",
+  "engine": "vllm 0.25.1",
+  "model": "deepseek-ai/DeepSeek-V4-Flash-0731",
+  "profile": {
+    "gpu_memory_utilization": 0.94,
+    "max_model_len": 131072,
+    "max_num_batched_tokens": 4096,
+    "max_num_seqs": 24,
+    "speculative_method": "dspark",
+    "speculative_tokens": 5,
+    "tensor_parallel_size": 2
+  },
+  "engine_capacity": {
+    "available_kv_cache_gib": 8.44,
+    "gpu_kv_cache_tokens": 547326,
+    "full_131072_token_concurrency": 4.18
+  },
+  "long_context": {
+    "cold_single": {
+      "prompt_tokens": 127009,
+      "completion_tokens": 2,
+      "elapsed_seconds": 15.486,
+      "http_status": 200,
+      "peak_temperature_c": [57, 53]
+    },
+    "cold_concurrency_2": {
+      "prompt_tokens_per_request": 127009,
+      "successful_requests": 2,
+      "wall_seconds": 30.459,
+      "request_seconds": [16.214, 30.453],
+      "minimum_free_vram_mib": [1496, 1507],
+      "peak_temperature_c": [66, 60]
+    }
+  },
+  "realistic_coding_ops": {
+    "prompt_tokens_per_request": 1023,
+    "max_output_tokens": 512,
+    "temperature": 0,
+    "thinking_enabled": true,
+    "thermal_limit_c": 85,
+    "phases": {
+      "c1": {
+        "successful_requests": 4,
+        "p50_per_stream_tok_s": 246.89,
+        "p05_per_stream_tok_s": 244.97,
+        "aggregate_output_tok_s": 232.61,
+        "p50_ttft_ms": 136
+      },
+      "c8": {
+        "successful_requests": 8,
+        "p50_per_stream_tok_s": 104.93,
+        "p05_per_stream_tok_s": 94.88,
+        "aggregate_output_tok_s": 741.53,
+        "p50_ttft_ms": 411
+      },
+      "c16": {
+        "successful_requests": 16,
+        "p50_per_stream_tok_s": 80.26,
+        "p05_per_stream_tok_s": 74.37,
+        "aggregate_output_tok_s": 1095.79,
+        "p50_ttft_ms": 662
+      },
+      "c24": {
+        "successful_requests": 24,
+        "p50_per_stream_tok_s": 64.18,
+        "p05_per_stream_tok_s": 60.76,
+        "minimum_per_stream_tok_s": 59.95,
+        "aggregate_output_tok_s": 1343.26,
+        "p50_ttft_ms": 539,
+        "peak_temperature_c": [58, 54]
+      }
+    }
+  },
+  "container_restart_count_after_benchmark": 0
+}

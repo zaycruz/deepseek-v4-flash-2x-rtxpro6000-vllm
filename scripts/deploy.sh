@@ -6,7 +6,7 @@ CURRENT_CONTAINER=${CURRENT_CONTAINER:-sglang-ds4-flash-0731-dspark-sm120}
 NEW_CONTAINER=${NEW_CONTAINER:-deepseek-v4-flash-vllm-prod}
 PORT=${PORT:-30000}
 ROLLBACK_CONTAINER=${ROLLBACK_CONTAINER:-${CURRENT_CONTAINER}-rollback-$(date -u +%Y%m%dT%H%M%SZ)}
-MAX_MODEL_LEN=${MAX_MODEL_LEN:-12288}
+MAX_MODEL_LEN=${MAX_MODEL_LEN:-131072}
 
 restore_previous() {
   echo "vLLM verification failed; restoring ${ROLLBACK_CONTAINER}" >&2

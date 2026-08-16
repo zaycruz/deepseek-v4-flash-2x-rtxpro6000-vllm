@@ -86,9 +86,9 @@ shell profile. Configure coding agents with the same base URL, key, and exact
 model ID. Do not point clients at raw port 30000.
 
 For Codex Router, keep the stable user-facing slug if desired, but map its
-`upstreamModel` to `deepseek-v4-flash-0731` and advertise a 12,288-token context
-window. A larger catalog value causes clients to send requests the production
-profile cannot accept.
+`upstreamModel` to `deepseek-v4-flash-0731`, advertise a 131,072-token context
+window, and compact at 110,000 tokens. The compaction margin leaves room for
+tool results and model output inside the total context limit.
 
 ## Verification
 

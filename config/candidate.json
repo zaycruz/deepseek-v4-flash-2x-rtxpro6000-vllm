@@ -2,10 +2,10 @@
   "config": {
     "disable_custom_all_reduce": true,
     "enable_flashinfer_autotune": false,
-    "gpu_memory_utilization": 0.95,
+    "gpu_memory_utilization": 0.94,
     "kv_cache_dtype": "fp8",
-    "max_model_len": 12288,
-    "max_num_batched_tokens": 16384,
+    "max_model_len": 131072,
+    "max_num_batched_tokens": 4096,
     "max_num_seqs": 24,
     "moe_backend": "marlin",
     "reasoning_parser": "deepseek_v4",

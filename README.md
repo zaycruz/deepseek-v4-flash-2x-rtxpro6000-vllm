@@ -7,26 +7,29 @@ and the checkpoint's DSpark draft model.
 
 ## Measured result
 
-These are real OpenAI-compatible streaming requests, not engine log rates.
-Each request used an agentic coding/operations prompt of about 1,023 input
-tokens, 512 output tokens, temperature 0, and thinking enabled.
+These are real OpenAI-compatible streaming requests against the production
+128K profile, not engine log rates. Each request used an agentic
+coding/operations prompt of about 1,023 input tokens, up to 512 output tokens,
+temperature 0, and thinking enabled.
 
 | Load | Requests | P50 decode tok/s per stream | P05 decode tok/s | Aggregate output tok/s | P50 TTFT | Success |
 |---|---:|---:|---:|---:|---:|---:|
-| C1 | 4 sequential | 255.41 | 242.07 | 202.85 | 138 ms | 100% |
-| C8 | 8 simultaneous | 85.82 | 68.01 | 532.11 | 233 ms | 100% |
-| C16 | 16 simultaneous | 86.68 | 68.76 | 1,005.22 | 2,031 ms | 100% |
-| C24 | 24 simultaneous | 71.02 | 66.90 | 1,366.08 | 1,341 ms | 100% |
+| C1 | 4 sequential | 246.89 | 244.97 | 232.61 | 136 ms | 100% |
+| C8 | 8 simultaneous | 104.93 | 94.88 | 741.53 | 411 ms | 100% |
+| C16 | 16 simultaneous | 80.26 | 74.37 | 1,095.79 | 662 ms | 100% |
+| C24 | 24 simultaneous | 64.18 | 60.76 | 1,343.26 | 539 ms | 100% |
 
-A second full replicate measured 255.93 tok/s at C1 and 72.40 tok/s per
-stream at C24, with 1,435.16 aggregate output tok/s. Across both C24
-replicates, the slowest individual stream was 65.23 tok/s. Peak temperatures
-were 69 C and 62 C.
+The C24 phase completed all 24 streams above 59.95 tok/s and peaked at 58 C
+and 54 C. A cold 127,009-token prompt completed in 15.49 seconds. Two distinct
+127,009-token prompts also completed concurrently in 30.46 seconds wall time,
+with 1.50 GiB minimum free VRAM and peak temperatures of 66 C and 60 C.
 
 Decode tok/s is `(completion_tokens - 1) / (last_token_time - first_token_time)`.
 Aggregate output tok/s is total completion tokens divided by phase wall time.
-The complete per-request traces and one-second GPU telemetry are committed in
-[`bench/metrics.json`](bench/metrics.json) and
+The 128K measurements are recorded in
+[`bench/context-128k-summary.json`](bench/context-128k-summary.json). The
+original tuning run's complete per-request traces and one-second GPU telemetry
+remain in [`bench/metrics.json`](bench/metrics.json) and
 [`bench/gpu-samples.csv`](bench/gpu-samples.csv).
 
 ## Exact configuration
@@ -42,13 +45,15 @@ The complete per-request traces and one-second GPU telemetry are committed in
 - MoE backend: Marlin
 - DSpark speculative decoding: 5 tokens
 - Maximum sequences: 24
-- Maximum batched tokens: 16,384
-- Maximum model length: 12,288 tokens
+- Maximum batched tokens: 4,096
+- Maximum model length: 131,072 tokens
+- GPU memory utilization: 0.94
 - Custom all-reduce: disabled for this PCIe topology
 
-The 12,288-token model-length cap is intentional: it is the capacity/performance
-point measured here. This recipe is not evidence for 512k or 1M context at the
-same concurrency or speed.
+vLLM reports 547,326 aggregate GPU KV-cache tokens, equivalent to 4.18 fully
+occupied 131,072-token requests. The scheduler still accepts 24 simultaneous
+shorter agent requests; 24 requests cannot all occupy the full context window
+at once.
 
 ## Build and run
 
@@ -71,20 +76,19 @@ CONTAINER_NAME=deepseek-v4-flash-vllm-prod \
 ./scripts/start.sh
 ```
 
-Context and scheduler limits are explicit deployment inputs. The benchmarked
-baseline remains 12,288 tokens, while a 128K candidate can be launched with:
+Context and scheduler limits are explicit deployment inputs. The production
+defaults are equivalent to:
 
 ```bash
 MAX_MODEL_LEN=131072 \
 MAX_NUM_SEQS=24 \
-MAX_NUM_BATCHED_TOKENS=16384 \
-GPU_MEMORY_UTILIZATION=0.98 \
+MAX_NUM_BATCHED_TOKENS=4096 \
+GPU_MEMORY_UTILIZATION=0.94 \
 ./scripts/start.sh
 ```
 
-Advertising 128K verifies that one request may address that context window; it
-does not imply that 24 requests can simultaneously fill 128K. Measure realistic
-prompt occupancy, queueing, and per-stream throughput separately.
+The 131,072-token limit is total prompt plus generated output. Coding clients
+compact at 110,000 tokens to preserve output and tool-result headroom.
 
 The launch script also mounts persistent vLLM, TileLang, DeepGEMM, FlashInfer,
 and Triton caches to avoid repeating kernel compilation after every container
@@ -158,12 +162,13 @@ Treat this file as a pinned backport for the exact vLLM 0.25.1 / FlashInfer
 ## Artifact integrity
 
 ```text
-c9f924da718e75ad6ed48ea1a9196cc36e9ebc6920073fd01612d30a9840f34c  config/candidate.json
+a7bf0f94741bf37049e42323354872afed7f42d868665e85c7cd190c257a5c13  config/candidate.json
+747f6e8e841bffa79e44705d9aef05029ce9df95d19d4be6aeecd7bb7c559b0f  bench/context-128k-summary.json
 c8366ab92cc89e100711575329addffa2aa517cf2336d57590ab7dc4cee0b1c0  bench/metrics.json
 7db8ff14b1583e994019be1625096621ac4edfd1946b8955fea550640e63e3c1  bench/gpu-samples.csv
 ```
 
-The winning experiment commit was
+The original 12K tuning experiment commit was
 `b051bd71d356a75c9002af6b25abdf4da2712f68`.
 
 ## License
