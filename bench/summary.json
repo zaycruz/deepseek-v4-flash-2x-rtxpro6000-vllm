@@ -1,0 +1,62 @@
+{
+  "source_experiment_commit": "b051bd71d356a75c9002af6b25abdf4da2712f68",
+  "selection": "lower-scoring conservative replicate of two full reconfirmations",
+  "workload": {
+    "prompt_tokens_per_request": "1018-1025",
+    "max_output_tokens": 512,
+    "temperature": 0,
+    "thinking_enabled": true,
+    "shape": "realistic-coding-ops"
+  },
+  "peak_temperatures_c": {
+    "0": 69,
+    "1": 62
+  },
+  "conservative": {
+    "c1": {
+      "p50_per_stream_tok_s": 255.41049753979797,
+      "p05_per_stream_tok_s": 242.07490992534485,
+      "aggregate_output_tok_s": 202.8494913846645,
+      "p50_ttft_ms": 137.5778435030952,
+      "success_rate": 1
+    },
+    "c8": {
+      "p50_per_stream_tok_s": 85.81979052535618,
+      "p05_per_stream_tok_s": 68.01445602756748,
+      "aggregate_output_tok_s": 532.1056819671121,
+      "p50_ttft_ms": 233.23432599863736,
+      "success_rate": 1
+    },
+    "c16": {
+      "p50_per_stream_tok_s": 86.6775660886522,
+      "p05_per_stream_tok_s": 68.76494374489823,
+      "aggregate_output_tok_s": 1005.2156404965859,
+      "p50_ttft_ms": 2031.0973304949584,
+      "success_rate": 1
+    },
+    "c24": {
+      "p50_per_stream_tok_s": 71.02309511831476,
+      "p05_per_stream_tok_s": 66.90238041395901,
+      "aggregate_output_tok_s": 1366.0800837082966,
+      "p50_ttft_ms": 1340.6351279991213,
+      "success_rate": 1,
+      "min_individual_stream_tok_s": 65.35858711789002
+    }
+  },
+  "second_replicate": {
+    "c1": {
+      "p50_per_stream_tok_s": 255.9256934017983
+    },
+    "c16": {
+      "p50_per_stream_tok_s": 84.93181493741469
+    },
+    "c24": {
+      "p50_per_stream_tok_s": 72.4032957614765,
+      "p05_per_stream_tok_s": 68.4801031551966,
+      "aggregate_output_tok_s": 1435.1560456753466,
+      "p50_ttft_ms": 1084.0854150083032,
+      "success_rate": 1,
+      "min_individual_stream_tok_s": 65.23431707314957
+    }
+  }
+}
