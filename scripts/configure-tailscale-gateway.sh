@@ -28,7 +28,7 @@ curl --fail --silent --max-time 5 http://127.0.0.1:4000/readyz >/dev/null || {
 }
 
 install -d -m 700 "${STATE_ROOT}"
-tailscale serve get-config "${BACKUP}"
+tailscale serve get-config "${BACKUP}" --all
 
 # Fail closed: remove any public Funnel route before creating private Serve.
 tailscale funnel reset
@@ -75,4 +75,4 @@ print(f"private gateway ready: https://{host}{public_path}")
 PY
 
 echo "previous Tailscale configuration: ${BACKUP}"
-echo "rollback: tailscale serve set-config ${BACKUP}"
+echo "rollback: tailscale serve set-config ${BACKUP} --all"

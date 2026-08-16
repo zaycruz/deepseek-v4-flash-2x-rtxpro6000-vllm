@@ -80,7 +80,7 @@ To remove the gateway, restore the Tailscale backup printed during setup and
 disable the user service:
 
 ```bash
-tailscale serve set-config ~/.local/state/ds4-gateway/<backup>.json
+tailscale serve set-config ~/.local/state/ds4-gateway/<backup>.json --all
 systemctl --user disable --now ds4-gateway.service
 ```
 
