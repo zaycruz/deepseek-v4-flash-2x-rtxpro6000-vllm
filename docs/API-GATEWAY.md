@@ -36,8 +36,9 @@ key itself in an argument:
 PROVISION_KEY_FILE=/secure/input/api-key ./scripts/install-gateway.sh
 ```
 
-The scripts preserve the prior Tailscale configuration under
-`~/.local/state/ds4-gateway/` and print its exact rollback command.
+The scripts preserve the prior Tailscale status under
+`~/.local/state/ds4-gateway/`. The fail-closed rollback removes the private
+route instead of restoring a previously public Funnel.
 
 ## OpenAI-compatible clients
 
@@ -76,11 +77,10 @@ Replace the protected key on the host and every authorized client, then run:
 systemctl --user restart ds4-gateway.service
 ```
 
-To remove the gateway, restore the Tailscale backup printed during setup and
-disable the user service:
+To remove the gateway, clear Tailscale Serve and disable the user service:
 
 ```bash
-tailscale serve set-config ~/.local/state/ds4-gateway/<backup>.json --all
+tailscale serve reset
 systemctl --user disable --now ds4-gateway.service
 ```
 

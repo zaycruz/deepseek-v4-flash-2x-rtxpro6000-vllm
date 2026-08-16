@@ -7,7 +7,7 @@ TARGET=${TARGET:-http://127.0.0.1:4000/v1}
 KEY_FILE=${DS4_GATEWAY_API_KEY_FILE:-${HOME}/.config/ds4-gateway/api-key}
 STATE_ROOT=${STATE_ROOT:-${HOME}/.local/state/ds4-gateway}
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
-BACKUP=${STATE_ROOT}/tailscale-serve-${STAMP}.json
+BACKUP=${STATE_ROOT}/tailscale-serve-status-${STAMP}.json
 STATUS_FILE=$(mktemp)
 trap 'rm -f "${STATUS_FILE}"' EXIT
 
@@ -28,7 +28,7 @@ curl --fail --silent --max-time 5 http://127.0.0.1:4000/readyz >/dev/null || {
 }
 
 install -d -m 700 "${STATE_ROOT}"
-tailscale serve get-config "${BACKUP}" --all
+tailscale serve status --json >"${BACKUP}"
 
 # Fail closed: remove any public Funnel route before creating private Serve.
 tailscale funnel reset
@@ -74,5 +74,5 @@ if not any(model.get("id") == "deepseek-v4-flash-0731" for model in payload.get(
 print(f"private gateway ready: https://{host}{public_path}")
 PY
 
-echo "previous Tailscale configuration: ${BACKUP}"
-echo "rollback: tailscale serve set-config ${BACKUP} --all"
+echo "previous Tailscale status snapshot: ${BACKUP}"
+echo "fail-closed rollback: tailscale serve reset"
